@@ -3,9 +3,8 @@
 - the express server
 ## public folder
 - where our front-end will live
-- ## front-end
-    - index.html
-    - scripts.js
+- index.html
+- scripts.js
 ## indexRouter
 - where our express routes will love
 ## config.js
