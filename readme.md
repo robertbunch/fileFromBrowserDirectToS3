@@ -6,7 +6,7 @@
 - index.html
 - scripts.js
 ## indexRouter
-- where our express routes will love
+- where our express routes will live
 ## config.js
 - this will have our AWS/S3 cred
 ## getS3PutLink

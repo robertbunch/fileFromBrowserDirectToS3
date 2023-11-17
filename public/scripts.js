@@ -1,91 +1,70 @@
-const progressBar = document.querySelector('.progress-bar')
-const progressWrapper = document.querySelector('#progress-wrapper')
-
-const updateProgressBar = progressEvent =>{
-    console.log(progressEvent)
-    const percentDone = progressEvent.loaded / progressEvent.total;
-    const barWidth = Math.floor(percentDone * 100);
-    progressBar.style.width = `${barWidth}%`
-    progressBar.setAttribute("aria-valuenow", barWidth);
+const updateProgressBar = e=>{
+    console.log(e)
+    const progressDone = e.progress
+    const barWidth = Math.floor(progressDone * 100)
+    const barStyle = `${barWidth}%`
+    document.querySelector('.progress-bar').style.width = barStyle
+    document.querySelector('.progress-bar').setAttribute('aria-valuenow',barWidth)
 }
 
-const uploadFile = async(e)=>{
-    e.preventDefault() //keep the browser from submitting
-    // console.log(e)
-    //Step 1. Turn on our progress bar
-    document.getElementById('progress-wrapper').style.display = "block"
-    //Step 2. Get a link from the back-end/express
+const addFile = async e=>{
+    e.preventDefault()
     const file = e.target[0].files[0]
-    //we do NOT want to send the entire file
-    //we only want to send the name and the size
+    // console.log(file)
+    //Step 1 - get a link from Express so we can upload our file DIRECTLY to S3
     const data = {
         fileName: file.name,
-        fileSize: file.size
+        fileSize: file.size,
+        fileType: file.type
     }
-    const postUrl = `http://localhost:3000/upload-file`
-    const uploadInfoResp = await axios.post(postUrl,data)
-    console.log(uploadInfoResp.data)
-    const uploadInfo = uploadInfoResp.data
-    // uploadInfo contains:
-    // s3ResponseLink, mimeType, uniqueS3key
-    //Step 3 - we have a response from the backend
-    //hopefully a link...
-    if(!uploadInfo.s3ResponseLink){
-        //Express refused us...
+    const postUrl = `http://localhost:3000/get-put-link`
+    const postResp = await axios.post(postUrl,data)
+    console.log(postResp)
+    //postResp.data = signedLink,mimeType,uniqueKeyName
+    const postData = postResp.data
+    // console.log(postData)
+    //Step 2 - turn on the progressBar
+    if(!postData.signedLink){
         swal({
-            title: "Failed to get link",
+            title: "Express rejected the link",
             icon: "error"
         })
+        return //end the function! there was an error!
     }
-    // Step 4 - Try and send file via link Express provided to S3
-    const awsFinalResponse = await new Promise(async(resolve, reject)=>{
+    //we have a link!
+    document.getElementById('progress-wrapper').style.display = "block"
+    //Step 3 - try and upload the file to S3
+    const awsFinalResp = await new Promise(async(resolve, reject)=>{
         try{
-            //send the file to S3
             const config = {}
-            //MUST include header or AWS will be unhappy
+            //content-type MUST match what Express told S3
             config.headers = {
-                'content-type' : uploadInfo.mimeType
+                'content-type': postData.mimeType,
             }
-            config.onUploadProgress = progressEvent => updateProgressBar(progressEvent)
-            //aws is expecting a PUT action/http verb
-            //send the file ... this was the goal all along! cut express out of the "file" part
-            const awsResp = await axios.put(uploadInfo.s3ResponseLink,file,config)
+            config.onUploadProgress = e=> updateProgressBar(e)
+            //aws is expecting a put http verb
+            //file is the entire file... we didn't have to send to express
+            const awsResp = await axios.put(postData.signedLink,file,config)
+            console.log(awsResp)
             resolve(awsResp)
         }catch(err){
-            console.log(`Error from AWS link: ${err}`)
-            swal({
-                title: "Error from AWS put",
-                icon: "error"
-            })
+            console.log(err)
             reject(err)
         }
     })
-    console.log(awsFinalResponse)
+    if(awsFinalResp.status !== 200){
+        //let express know it failed, for some non js reason
+    }
 
-    //Step 5 - Let Express know what happened (success?)
-    const finalizeFileUrl = `http://localhost:3000/finalize-upload`
+    //Step 4 - aws did not err, so let express know what happend
+    const finalUrlToExpress = `http://localhost:3000/finalize-upload`
     const finalData = {
-        s3Key: uploadInfo.uniqueS3key,
+        key: postData.uniqueKeyName, 
     }
-    if(awsFinalResponse.status !== 200){
-        swal({
-            title: `There was an unknown error uploading to S3. code: ${awsFinalResponse.status}`,
-            icon: "error",
-        })
-        finalData.success = false;
-        axios.post(finalizeFileUrl,finalData);
-    }else{
-        swal({
-            title: `File uploaded`,
-            icon: "success",
-        })
-        finalData.success = true;
-        const imageUrlResp = await axios.post(finalizeFileUrl,finalData);
-        console.log(imageUrlResp)
-        document.getElementById('current-image').innerHTML = `<img src="${imageUrlResp.data}" width="100%" />`
-    }
-    // STEP 6. All done. Flip the showProgress off.
-    progressWrapper.style.display = 'none'
+    const expressResp = await axios.post(finalUrlToExpress, finalData)
+    const imgLink = expressResp.data
+    document.getElementById('current-image').innerHTML = `<img src="${imgLink}" width="100%" />`
+
 }
 
-document.getElementById('file-form').addEventListener('submit',uploadFile)
+document.getElementById('file-form').addEventListener('submit',addFile)
