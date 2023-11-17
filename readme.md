@@ -1,17 +1,17 @@
-##index.js 
+## index.js 
 - the entry point for node
 - the express server
-##public folder
+## public folder
 - where our front-end will live
-##indexRouter
+- ## front-end
+    - index.html
+    - scripts.js
+## indexRouter
 - where our express routes will love
-##config.js
+## config.js
 - this will have our AWS/S3 cred
-##getS3PutLink
+## getS3PutLink
 - this will generate our link for the front end, in the backend
-##getS3SignedLink
+## getS3SignedLink
 - this will give public access to the file for x time
 
-#front-end
-- index.html
-- scripts.js
