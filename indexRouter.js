@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const mime = require('mime-types')
 const getS3PutLink = require('./getS3PutLink')
+const getSignedLink = require('./getS3SignedLink')
 
 router.post('/upload-file',async(req, res)=>{
     //this route's job is to take the filename and get a link
@@ -21,6 +22,17 @@ router.post('/upload-file',async(req, res)=>{
         mimeType,
         uniqueS3key
     })
+})
+
+router.post('/finalize-upload',(req, res)=>{
+    if(req.body.success){
+        const link = getSignedLink(req.body.s3Key)
+        console.log(req.body)
+        console.log(link)
+        res.json(link)
+    }else{
+        //do other stuff
+    }
 })
 
 router.get('/test',(req, res)=>{

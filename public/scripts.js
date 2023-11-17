@@ -1,7 +1,12 @@
+const progressBar = document.querySelector('.progress-bar')
+const progressWrapper = document.querySelector('#progress-wrapper')
 
 const updateProgressBar = progressEvent =>{
     console.log(progressEvent)
-    // const percentDone = 
+    const percentDone = progressEvent.loaded / progressEvent.total;
+    const barWidth = Math.floor(percentDone * 100);
+    progressBar.style.width = `${barWidth}%`
+    progressBar.setAttribute("aria-valuenow", barWidth);
 }
 
 const uploadFile = async(e)=>{
@@ -32,6 +37,7 @@ const uploadFile = async(e)=>{
             icon: "error"
         })
     }
+    // Step 4 - Try and send file via link Express provided to S3
     const awsFinalResponse = await new Promise(async(resolve, reject)=>{
         try{
             //send the file to S3
@@ -55,6 +61,31 @@ const uploadFile = async(e)=>{
         }
     })
     console.log(awsFinalResponse)
+
+    //Step 5 - Let Express know what happened (success?)
+    const finalizeFileUrl = `http://localhost:3000/finalize-upload`
+    const finalData = {
+        s3Key: uploadInfo.uniqueS3key,
+    }
+    if(awsFinalResponse.status !== 200){
+        swal({
+            title: `There was an unknown error uploading to S3. code: ${awsFinalResponse.status}`,
+            icon: "error",
+        })
+        finalData.success = false;
+        axios.post(finalizeFileUrl,finalData);
+    }else{
+        swal({
+            title: `File uploaded`,
+            icon: "success",
+        })
+        finalData.success = true;
+        const imageUrlResp = await axios.post(finalizeFileUrl,finalData);
+        console.log(imageUrlResp)
+        document.getElementById('current-image').innerHTML = `<img src="${imageUrlResp.data}" width="100%" />`
+    }
+    // STEP 6. All done. Flip the showProgress off.
+    progressWrapper.style.display = 'none'
 }
 
 document.getElementById('file-form').addEventListener('submit',uploadFile)
