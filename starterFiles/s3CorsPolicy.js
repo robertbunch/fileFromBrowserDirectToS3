@@ -6,10 +6,10 @@
         "AllowedMethods": [
             "GET",
             "HEAD",
-            "PUT" //This is REQUIRED for this exercise
+            "PUT"
         ],
         "AllowedOrigins": [
-            "http://localhost:3000" //Change this to your domain
+            "http://localhost:3000"
         ],
         "ExposeHeaders": [],
         "MaxAgeSeconds": 3000
